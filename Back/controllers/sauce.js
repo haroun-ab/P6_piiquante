@@ -2,7 +2,7 @@ const Sauce = require('../models/Sauce');
 const fs = require('fs');
 
 exports.addNewSauce = (req, res, next) => {
-  // On récupére l'objetr transmis dans la requête
+  // On récupére l'objet transmis dans la requête
   const sauceObject = JSON.parse(req.body.sauce);
   delete sauceObject._id; // On supprime ce champ car il va être généré automatiquement par la BDD
   delete sauceObject._userId; // On supprime ce champ pour éviter que l'utilsateur puisse les changer.
@@ -10,6 +10,8 @@ exports.addNewSauce = (req, res, next) => {
   const sauce = new Sauce({
     ...sauceObject, // On lui passe l'objet sans les éléments que nous avons supprimé plus haut
     userId: req.auth.userId, // On lui passe l'userId provenant du token
+    likes: 0,
+    dislikes: 0,
     imageUrl: `${req.protocol}://${req.get('host')}/images/${
       req.file.filename
     }`, // On lui passe l'url de l'image qu'on va générer grâce à multer
@@ -50,7 +52,7 @@ exports.updateSauce = (req, res, next) => {
   // On récupére l'élément qui possède l'id présent dans les params
   Sauce.findOne({ _id: req.params.id })
     .then((sauce) => {
-      // Erreur si l'utilisateur n'est pas celui qui a créée la sauce
+      // Erreur si l'utilisateur n'est pas celui qui a créé la sauce
       if (sauce.userId != req.auth.userId) {
         res.status(401).json({ message: 'Not authorized' });
       } else if (req.file) {
@@ -150,11 +152,13 @@ exports.likeSauce = (req, res, next) => {
           .then(() => res.status(200).json({ message: 'Element disliké !' }))
           .catch((error) => res.status(401).json({ error }));
       } else {
-        if (sauce.usersLiked.indexOf(likeObject.userId) !== -1) {
+        const userIdIndex = sauce.usersLiked.indexOf(likeObject.userId);
+
+        if (userIdIndex !== -1) {
           // Si l'utilisateur supprime son like, on le décrémente du nombre de like
           // et on efface l'userId dans le tableau des personnes ayant liké
           totalLikes -= 1;
-          usersLikedArray.splice(usersLikedArray.indexOf(likeObject.userId), 1);
+          usersLikedArray.splice(userIdIndex, 1);
 
           Sauce.updateOne(
             { _id: req.params.id },
@@ -172,9 +176,10 @@ exports.likeSauce = (req, res, next) => {
           // et on efface l'userId dans le tableau des personnes ayant disliké
           totalDislikes -= 1;
           usersDislikedArray.splice(
-            usersDislikedArray.indexOf(likeObject.userId),
+            sauce.usersDisliked.indexOf(likeObject.userId),
             1
           );
+
           Sauce.updateOne(
             { _id: req.params.id },
             {
@@ -194,8 +199,8 @@ exports.likeSauce = (req, res, next) => {
     });
 };
 
-// const ModelsSauce = [
-//   {
+// Sauce Harissa //
+
 //     userId: '',
 //     name: 'Sauce Harissa',
 //     manufacturer: 'Le phare du Cap Bon',
@@ -205,10 +210,3 @@ exports.likeSauce = (req, res, next) => {
 //     imageUrl:
 //       'https://media.carrefour.fr/medias/1b42bc98406b3e3e830c641d69a707d8/p_540x540/6194049100013-photosite-20150228-095923-0.jpg',
 //     heat: 4,
-//     likes: 10,
-//     dislikes: 4,
-//     usersLiked: 'String',
-//     usersDisliked: 'String',
-//   },
-// ];
-// res.status(200).json(ModelsSauce);

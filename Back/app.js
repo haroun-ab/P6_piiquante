@@ -8,14 +8,13 @@ const sauceRoutes = require('./routes/sauce');
 
 const dotenv = require('dotenv');
 dotenv.config();
+
 //// Database (MangoDB) ////
 const mongoose = require('mongoose');
-const userName = process.env.MONGO_ID;
-const password = process.env.MONGO_PASSWORD;
+const MongoCluster = process.env.MDB_CLUSTER;
+
 mongoose
-  .connect(
-    `mongodb+srv://${userName}:${password}@cluster0.chgm0zk.mongodb.net/?retryWrites=true&w=majority`
-  )
+  .connect(`mongodb+srv://Haroun:piiquante@${MongoCluster}`)
   .then(() => console.log('Connected to database !'))
   .catch(() => console.error('Connection failed...'));
 
