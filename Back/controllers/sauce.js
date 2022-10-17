@@ -37,6 +37,7 @@ exports.openSauce = (req, res, next) => {
     .then((sauce) => res.status(200).json(sauce))
     .catch((error) => res.status(404).json({ error }));
 };
+
 exports.updateSauce = (req, res, next) => {
   // On regarde si il y a un fichier qui a été transmis
   const sauceObject = req.file
@@ -117,48 +118,58 @@ exports.likeSauce = (req, res, next) => {
       let totalLikes = sauce.likes;
       let usersLikedArray = sauce.usersLiked;
       let usersDislikedArray = sauce.usersDisliked;
-      if (likeObject.like === 1) {
-        // Si l'utilisateur like, on l'incrémente au nombre de like
-        // et on rajoute l'userId dans le tableau des personnes ayant liké
-        totalLikes += 1;
-        usersLikedArray.push(likeObject.userId);
+      if (
+        sauce.usersLiked.indexOf(likeObject.userId) === -1 &&
+        sauce.usersDisliked.indexOf(likeObject.userId) === -1
+      ) {
+        if (likeObject.like === 1) {
+          // Si l'utilisateur like, on l'incrémente au nombre de like
+          // et on rajoute l'userId dans le tableau des personnes ayant liké
+          totalLikes += 1;
+          usersLikedArray.push(likeObject.userId);
 
-        Sauce.updateOne(
-          { _id: req.params.id },
-          {
-            sauce,
-            _id: req.params.id,
-            likes: totalLikes,
-            usersLiked: usersLikedArray,
-          }
-        )
-          .then(() => res.status(200).json({ message: 'Element liké !' }))
-          .catch((error) => res.status(401).json({ error }));
-      } else if (likeObject.like === -1) {
-        // Si l'utilisateur dislike, on l'incrémente au nombre de dislike
-        // et on rajoute l'userId dans le tableau des personnes ayant disliké
-        totalDislikes += 1;
-        usersDislikedArray.push(likeObject.userId);
+          Sauce.updateOne(
+            { _id: req.params.id },
+            {
+              sauce,
+              _id: req.params.id,
+              likes: totalLikes,
+              usersLiked: usersLikedArray,
+            }
+          )
+            .then(() => res.status(200).json({ message: 'Element liké !' }))
+            .catch((error) => res.status(401).json({ error }));
+        } else if (likeObject.like === -1) {
+          // Si l'utilisateur dislike, on l'incrémente au nombre de dislike
+          // et on rajoute l'userId dans le tableau des personnes ayant disliké
+          totalDislikes += 1;
+          usersDislikedArray.push(likeObject.userId);
 
-        Sauce.updateOne(
-          { _id: req.params.id },
-          {
-            sauce,
-            _id: req.params.id,
-            dislikes: totalDislikes,
-            usersDisliked: usersDislikedArray,
-          }
-        )
-          .then(() => res.status(200).json({ message: 'Element disliké !' }))
-          .catch((error) => res.status(401).json({ error }));
+          Sauce.updateOne(
+            { _id: req.params.id },
+            {
+              sauce,
+              _id: req.params.id,
+              dislikes: totalDislikes,
+              usersDisliked: usersDislikedArray,
+            }
+          )
+            .then(() => res.status(200).json({ message: 'Element disliké !' }))
+            .catch((error) => res.status(401).json({ error }));
+        }
       } else {
-        const userIdIndex = sauce.usersLiked.indexOf(likeObject.userId);
-
-        if (userIdIndex !== -1) {
+        if (
+          likeObject.like === 0 &&
+          sauce.usersLiked.indexOf(likeObject.userId) !== -1 &&
+          sauce.usersDisliked.indexOf(likeObject.userId) === -1
+        ) {
           // Si l'utilisateur supprime son like, on le décrémente du nombre de like
           // et on efface l'userId dans le tableau des personnes ayant liké
           totalLikes -= 1;
-          usersLikedArray.splice(userIdIndex, 1);
+          usersLikedArray.splice(
+            sauce.usersLiked.indexOf(likeObject.userId),
+            1
+          );
 
           Sauce.updateOne(
             { _id: req.params.id },
@@ -171,7 +182,11 @@ exports.likeSauce = (req, res, next) => {
           )
             .then(() => res.status(200).json({ message: 'Like annulé' }))
             .catch((error) => res.status(401).json({ error }));
-        } else {
+        } else if (
+          likeObject.like === 0 &&
+          sauce.usersDisliked.indexOf(likeObject.userId) !== -1 &&
+          sauce.usersLiked.indexOf(likeObject.userId) === -1
+        ) {
           // Si l'utilisateur supprime son dislike, on le décrémente du nombre de dislike
           // et on efface l'userId dans le tableau des personnes ayant disliké
           totalDislikes -= 1;
@@ -191,6 +206,11 @@ exports.likeSauce = (req, res, next) => {
           )
             .then(() => res.status(200).json({ message: 'Dislike annulé' }))
             .catch((error) => res.status(401).json({ error }));
+        } else {
+          res.status(400).json({
+            message:
+              "Vous ne pouvez pas liker/disliker une sauce plus d'une fois",
+          });
         }
       }
     })

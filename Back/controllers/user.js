@@ -18,7 +18,6 @@ exports.signup = (req, res, next) => {
     res.status(401).json({ message: 'email non conforme' });
   } else {
     // On crypte le mot de passe
-
     bcrypt
       .hash(req.body.password, 10)
       .then((hash) => {
